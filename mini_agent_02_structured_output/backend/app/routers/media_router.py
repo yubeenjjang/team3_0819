@@ -1,10 +1,11 @@
 from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
 
+from app.openapi import UNIT_01_TAG
 from app.schemas import TtsRequest
 from app.services.media_service import analyze_image, create_speech
 
 
-media_router = APIRouter(prefix="/api/media", tags=["Multimodal"])
+media_router = APIRouter(prefix="/api/media", tags=[UNIT_01_TAG])
 
 
 @media_router.post("/image-analysis")

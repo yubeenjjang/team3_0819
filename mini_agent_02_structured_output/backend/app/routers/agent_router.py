@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import ValidationError
 
 from app.config import settings
+from app.openapi import UNIT_01_TAG, UNIT_02_TAG
 from app.providers import generate, generate_structured, get_structured_model, provider_status
 from app.schemas import (
     ConceptCompareResult, GenerateRequest, GenerateResult, MessageRequest,
@@ -18,30 +19,36 @@ from app.services.prompt_service import build_prompt
 from app.services.travel_classifier import classify_travel_request
 
 
-agent_router = APIRouter(tags=["Agent"])
+agent_router = APIRouter()
 
 
-@agent_router.get("/health")
+@agent_router.get("/health", tags=[UNIT_01_TAG])
 def health() -> dict:
     return {"status": "ok", "stage": "mini_agent_02_structured_output", "default_provider": settings.llm_provider}
 
 
-@agent_router.get("/api/providers")
+@agent_router.get("/api/providers", tags=[UNIT_01_TAG])
 def providers() -> dict:
     return {"default_provider": settings.llm_provider, "providers": provider_status()}
 
 
-@agent_router.post("/api/concepts/compare", response_model=ConceptCompareResult)
+@agent_router.post(
+    "/api/concepts/compare", response_model=ConceptCompareResult, tags=[UNIT_01_TAG]
+)
 def compare_concepts(payload: MessageRequest) -> ConceptCompareResult:
     return ConceptCompareResult.model_validate(compare_decisions(payload.message))
 
 
-@agent_router.post("/api/travel/classify", response_model=TravelIntentResult)
+@agent_router.post(
+    "/api/travel/classify", response_model=TravelIntentResult, tags=[UNIT_01_TAG]
+)
 def classify_travel(payload: MessageRequest) -> TravelIntentResult:
     return TravelIntentResult.model_validate(classify_travel_request(payload.message))
 
 
-@agent_router.post("/api/generate", response_model=GenerateResult)
+@agent_router.post(
+    "/api/generate", response_model=GenerateResult, tags=[UNIT_01_TAG]
+)
 def create_response(payload: GenerateRequest) -> GenerateResult:
     selected = payload.provider or settings.llm_provider
     try:
@@ -52,7 +59,9 @@ def create_response(payload: GenerateRequest) -> GenerateResult:
         raise HTTPException(status_code=502, detail=f"{selected} 실제 연결에 실패했습니다: {error}") from error
 
 
-@agent_router.post("/api/providers/compare", response_model=ProviderCompareResult)
+@agent_router.post(
+    "/api/providers/compare", response_model=ProviderCompareResult, tags=[UNIT_01_TAG]
+)
 def compare_providers(payload: ProviderCompareRequest) -> ProviderCompareResult:
     items: list[ProviderComparisonItem] = []
     for selected in payload.providers:
@@ -64,7 +73,9 @@ def compare_providers(payload: ProviderCompareRequest) -> ProviderCompareResult:
     return ProviderCompareResult(request_count=len(payload.providers), results=items)
 
 
-@agent_router.post("/api/prompts/preview", response_model=PromptPreviewResult)
+@agent_router.post(
+    "/api/prompts/preview", response_model=PromptPreviewResult, tags=[UNIT_02_TAG]
+)
 def preview_prompt(payload: PromptPreviewRequest) -> PromptPreviewResult:
     return PromptPreviewResult(
         **payload.model_dump(),
@@ -78,7 +89,11 @@ def preview_prompt(payload: PromptPreviewRequest) -> PromptPreviewResult:
     )
 
 
-@agent_router.post("/api/structured/validate", response_model=StructuredValidationResult)
+@agent_router.post(
+    "/api/structured/validate",
+    response_model=StructuredValidationResult,
+    tags=[UNIT_02_TAG],
+)
 def validate_structured_output(
     payload: StructuredValidationRequest,
 ) -> StructuredValidationResult:
@@ -96,11 +111,16 @@ def validate_structured_output(
         )
 
 
-@agent_router.post("/api/structured/generate", response_model=StructuredOutputResult)
+@agent_router.post(
+    "/api/structured/generate",
+    response_model=StructuredOutputResult,
+    tags=[UNIT_02_TAG],
+)
 @agent_router.post(
     "/api/structured/travel-plan",
     response_model=StructuredOutputResult,
     include_in_schema=False,
+    tags=[UNIT_02_TAG],
 )
 def create_structured_output(payload: StructuredOutputRequest) -> StructuredOutputResult:
     selected = payload.provider or settings.llm_provider
@@ -122,7 +142,11 @@ def create_structured_output(payload: StructuredOutputRequest) -> StructuredOutp
         raise HTTPException(status_code=502, detail=f"{selected} 구조화 출력에 실패했습니다: {error}") from error
 
 
-@agent_router.post("/api/structured/compare", response_model=StructuredCompareResult)
+@agent_router.post(
+    "/api/structured/compare",
+    response_model=StructuredCompareResult,
+    tags=[UNIT_02_TAG],
+)
 def compare_structured_outputs(payload: StructuredCompareRequest) -> StructuredCompareResult:
     items: list[StructuredComparisonItem] = []
     for selected in payload.providers:
