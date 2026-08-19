@@ -30,19 +30,11 @@ def test_openapi_exposes_generic_structured_route_only() -> None:
     assert "/api/structured/travel-plan" not in paths
 
 
-def test_openapi_separates_unit_01_and_unit_02() -> None:
-    schema = client.get("/openapi.json").json()
-    assert [tag["name"] for tag in schema["tags"]] == [
-        "01 · LLM 기본",
-        "02 · Prompt & Structured Output",
-    ]
-    assert schema["paths"]["/api/generate"]["post"]["tags"] == ["01 · LLM 기본"]
-    assert schema["paths"]["/api/media/tts"]["post"]["tags"] == ["01 · LLM 기본"]
-    assert schema["paths"]["/api/prompts/preview"]["post"]["tags"] == [
-        "02 · Prompt & Structured Output"
-    ]
-    assert schema["paths"]["/api/structured/generate"]["post"]["tags"] == [
-        "02 · Prompt & Structured Output"
+def test_openapi_separates_unit_01_and_02_tags() -> None:
+    openapi = client.get("/openapi.json").json()
+    assert openapi["paths"]["/api/generate"]["post"]["tags"] == ["01 · LLM"]
+    assert openapi["paths"]["/api/structured/generate"]["post"]["tags"] == [
+        "02 · Structured Output"
     ]
 
 

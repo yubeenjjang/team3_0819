@@ -3,7 +3,7 @@
 > 기준 문서: `C:\mini_agent\mini_agent_02_structured_output\MASTER_PLAN.md`  
 > 실제 구현 대상: `C:\mini_agent\mini_agent_02_structured_output`  
 > 문서 목적: Backend A/B 병렬 개발과 Frontend 병합 시 충돌을 최소화하는 구현 기준 확정  
-> 현재 상태: Backend B 독립 구현 완료, Backend A 의존성과 Router 등록 대기
+> 현재 상태: 검토용 계획서이며 프로젝트 코드는 변경하지 않음
 
 ---
 
@@ -640,20 +640,6 @@ Frontend는 백엔드 Python 모델이나 Provider 모듈을 import하지 않고
 
 ---
 
-## 14. 현재 구현 상태
+## 14. 구현 승인 전 상태
 
-Backend B 소유 범위에서 다음 작업을 완료했다.
-
-- `backend/app/map_travel/service.py` 추가
-- `backend/app/routers/map_travel_router.py` 추가
-- `backend/tests/test_map_travel_api.py` 추가
-- 기존 앱 회귀 테스트: Mock 환경에서 `15 passed`
-
-Backend A의 `schemas.py`, `provider_service.py`가 아직 없으므로 B 전용 API 테스트 1개 파일은 의도적으로 skip된다. 기존 앱을 import 오류로 중단시키지 않기 위해 `backend/app/main.py`의 Router 등록은 A 병합 직후 수행한다.
-
-남은 Backend B 작업:
-
-1. Backend A 산출물 병합 확인
-2. `main.py`에 `map_travel_router` import와 `app.include_router()` 두 줄 추가
-3. B 전용 API 테스트 실행
-4. 전체 회귀 테스트 실행
+이 문서는 검토용 Backend Plan이다. 현재 단계에서는 `C:\mini_agent`의 Python 코드, 설정, 테스트, 의존성 및 Git 브랜치를 변경하지 않는다. 계획 승인 후 Backend A와 Backend B가 각자 소유 파일 범위 안에서 구현을 시작한다.
