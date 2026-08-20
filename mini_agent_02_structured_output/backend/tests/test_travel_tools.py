@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.travel_tools.executor import ToolNotAllowedError, execute_tool_call
-from app.travel_tools.provider_service import run_mock_tool_loop
+from app.travel_tools.provider_service import run_tool_loop
 from app.travel_tools.schemas import ToolCall, TravelRecommendationInput
 
 
@@ -18,12 +18,14 @@ def make_input() -> TravelRecommendationInput:
 
 
 def test_mock_tool_loop_returns_attractions_and_restaurants() -> None:
-    calls, results, answer = run_mock_tool_loop(make_input())
+    _, calls, results, answer = run_tool_loop("mock", make_input())
 
     assert [call.name for call in calls] == ["recommend_attractions", "recommend_restaurants"]
     assert all(result.success for result in results)
     assert results[0].data is not None
     assert results[1].data is not None
+    assert len(results[0].data.attractions) == 3
+    assert len(results[1].data.restaurants) == 3
     assert "관광지" in answer and "맛집" in answer
 
 

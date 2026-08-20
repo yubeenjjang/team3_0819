@@ -1,7 +1,7 @@
 from time import perf_counter
 
 from app.config import settings
-from app.travel_tools.provider_service import run_mock_tool_loop
+from app.travel_tools.provider_service import run_tool_loop
 from app.travel_tools.schemas import TravelPlanRequest, TravelPlanResponse, TravelRecommendationInput
 
 
@@ -14,20 +14,18 @@ class TravelToolExecutionError(RuntimeError):
 
 
 def create_travel_plan(payload: TravelPlanRequest) -> TravelPlanResponse:
-    """Run the safe mock tool loop behind backend A's API contract."""
+    """Run a Provider tool proposal through the shared safe Tool executor."""
     selected_provider = payload.provider or settings.llm_provider
-    if selected_provider != "mock":
-        raise TravelProviderError("현재 여행 Tool Use는 mock Provider만 지원합니다.")
     started = perf_counter()
     request = TravelRecommendationInput.model_validate(payload.model_dump(exclude={"provider"}))
     try:
-        tool_calls, tool_results, answer = run_mock_tool_loop(request)
+        model, tool_calls, tool_results, answer = run_tool_loop(selected_provider, request)
     except Exception as error:
-        raise TravelToolExecutionError("여행 추천 Tool 실행에 실패했습니다.") from error
+        raise TravelProviderError("여행 Provider의 Tool 제안 생성에 실패했습니다.") from error
     if not all(result.success for result in tool_results):
         raise TravelToolExecutionError("여행 추천 Tool 실행에 실패했습니다.")
     return TravelPlanResponse(
-        provider="mock", model="deterministic-travel-tool-mock", request=request,
+        provider=selected_provider, model=model, request=request,
         tool_calls=tool_calls, tool_results=tool_results, answer=answer,
         latency_ms=max(0, int((perf_counter() - started) * 1000)),
     )
