@@ -62,10 +62,29 @@ def build_map_html(places: list[dict[str, Any]]) -> str:
       const map = new kakao.maps.Map(mapElement, {{
         center: new kakao.maps.LatLng(first.latitude, first.longitude), level: 7,
       }});
+      const markerSize = new kakao.maps.Size(30, 42);
+      const markerOption = {{ offset: new kakao.maps.Point(15, 42) }};
+      const markerSvg = (color) => `data:image/svg+xml;charset=UTF-8,${{encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42">
+          <path d="M15 1C7.8 1 2 6.8 2 14c0 9.8 13 27 13 27s13-17.2 13-27C28 6.8 22.2 1 15 1z" fill="${{color}}" stroke="#ffffff" stroke-width="2"/>
+          <circle cx="15" cy="14" r="5" fill="#ffffff"/>
+        </svg>`
+      )}}`;
+      const landmarkMarkerImage = new kakao.maps.MarkerImage(
+        markerSvg("#2563eb"), markerSize, markerOption
+      );
+      const foodMarkerImage = new kakao.maps.MarkerImage(
+        markerSvg("#f97316"), markerSize, markerOption
+      );
       const bounds = new kakao.maps.LatLngBounds();
       places.forEach((place) => {{
         const position = new kakao.maps.LatLng(place.latitude, place.longitude);
-        const marker = new kakao.maps.Marker({{ map, position, title: place.name }});
+        const marker = new kakao.maps.Marker({{
+          map,
+          position,
+          title: place.name,
+          image: place.kind === "landmark" ? landmarkMarkerImage : foodMarkerImage,
+        }});
         const content = document.createElement('div');
         content.className = 'info-window';
         const title = document.createElement('strong');
