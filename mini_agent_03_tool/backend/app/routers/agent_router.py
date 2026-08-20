@@ -21,34 +21,34 @@ from app.schemas import (
 from app.services.concept_service import compare_decisions
 from app.services.prompt_service import build_prompt
 from app.services.travel_classifier import classify_travel_request
-from app.tools.definitions import TRAVEL_TOOL_DEFINITIONS
+from app.tools.definitions import get_tool_definitions
 from app.tools.travel_tools import run_tool
 
 
-agent_router = APIRouter(tags=["Agent"])
+agent_router = APIRouter()
 
 
-@agent_router.get("/health")
+@agent_router.get("/health", tags=["01 · LLM"])
 def health() -> dict:
     return {"status": "ok", "stage": "mini_agent_03_tool", "default_provider": settings.llm_provider}
 
 
-@agent_router.get("/api/providers")
+@agent_router.get("/api/providers", tags=["01 · LLM"])
 def providers() -> dict:
     return {"default_provider": settings.llm_provider, "providers": provider_status()}
 
 
-@agent_router.post("/api/concepts/compare", response_model=ConceptCompareResult)
+@agent_router.post("/api/concepts/compare", response_model=ConceptCompareResult, tags=["01 · LLM"])
 def compare_concepts(payload: MessageRequest) -> ConceptCompareResult:
     return ConceptCompareResult.model_validate(compare_decisions(payload.message))
 
 
-@agent_router.post("/api/travel/classify", response_model=TravelIntentResult)
+@agent_router.post("/api/travel/classify", response_model=TravelIntentResult, tags=["01 · LLM"])
 def classify_travel(payload: MessageRequest) -> TravelIntentResult:
     return TravelIntentResult.model_validate(classify_travel_request(payload.message))
 
 
-@agent_router.post("/api/generate", response_model=GenerateResult)
+@agent_router.post("/api/generate", response_model=GenerateResult, tags=["01 · LLM"])
 def create_response(payload: GenerateRequest) -> GenerateResult:
     selected = payload.provider or settings.llm_provider
     try:
@@ -59,7 +59,7 @@ def create_response(payload: GenerateRequest) -> GenerateResult:
         raise HTTPException(status_code=502, detail=f"{selected} 실제 연결에 실패했습니다: {error}") from error
 
 
-@agent_router.post("/api/providers/compare", response_model=ProviderCompareResult)
+@agent_router.post("/api/providers/compare", response_model=ProviderCompareResult, tags=["01 · LLM"])
 def compare_providers(payload: ProviderCompareRequest) -> ProviderCompareResult:
     items: list[ProviderComparisonItem] = []
     for selected in payload.providers:
@@ -71,12 +71,12 @@ def compare_providers(payload: ProviderCompareRequest) -> ProviderCompareResult:
     return ProviderCompareResult(request_count=len(payload.providers), results=items)
 
 
-@agent_router.post("/api/prompts/preview", response_model=PromptPreviewResult)
+@agent_router.post("/api/prompts/preview", response_model=PromptPreviewResult, tags=["01 · LLM"])
 def preview_prompt(payload: PromptPreviewRequest) -> PromptPreviewResult:
     return PromptPreviewResult(**payload.model_dump(), prompt=build_prompt(payload.role, payload.instruction, payload.context, payload.constraint))
 
 
-@agent_router.post("/api/structured/validate", response_model=TravelValidationResult)
+@agent_router.post("/api/structured/validate", response_model=TravelValidationResult, tags=["02 · Structured Output"])
 def validate_travel_plan(payload: TravelValidationRequest) -> TravelValidationResult:
     try:
         return TravelValidationResult(valid=True, data=TravelPlan.model_validate(payload.payload))
@@ -85,7 +85,7 @@ def validate_travel_plan(payload: TravelValidationRequest) -> TravelValidationRe
         return TravelValidationResult(valid=False, errors=errors)
 
 
-@agent_router.post("/api/structured/travel-plan", response_model=StructuredTravelResult)
+@agent_router.post("/api/structured/travel-plan", response_model=StructuredTravelResult, tags=["02 · Structured Output"])
 def create_structured_travel_plan(payload: StructuredTravelRequest) -> StructuredTravelResult:
     selected = payload.provider or settings.llm_provider
     try:
@@ -97,7 +97,7 @@ def create_structured_travel_plan(payload: StructuredTravelRequest) -> Structure
         raise HTTPException(status_code=502, detail=f"{selected} 구조화 출력에 실패했습니다: {error}") from error
 
 
-@agent_router.post("/api/structured/compare", response_model=StructuredCompareResult)
+@agent_router.post("/api/structured/compare", response_model=StructuredCompareResult, tags=["02 · Structured Output"])
 def compare_structured_outputs(payload: StructuredCompareRequest) -> StructuredCompareResult:
     items: list[StructuredComparisonItem] = []
     for selected in payload.providers:
@@ -109,7 +109,7 @@ def compare_structured_outputs(payload: StructuredCompareRequest) -> StructuredC
     return StructuredCompareResult(request_count=len(payload.providers), results=items)
 
 
-@agent_router.post("/api/media/image-analysis")
+@agent_router.post("/api/media/image-analysis", tags=["01 · LLM"])
 async def image_analysis(image: UploadFile = File(...), question: str = Form("여행자가 알아야 할 정보와 주의점을 알려주세요.")) -> dict:
     try:
         return analyze_image(image.content_type or "", await image.read(), question).model_dump()
@@ -119,7 +119,7 @@ async def image_analysis(image: UploadFile = File(...), question: str = Form("�
         raise HTTPException(status_code=502, detail=f"이미지 분석 실패: {error}") from error
 
 
-@agent_router.post("/api/media/tts")
+@agent_router.post("/api/media/tts", tags=["01 · LLM"])
 def text_to_speech(payload: TtsRequest) -> Response:
     try:
         return Response(content=create_speech(payload.text, payload.voice, payload.instructions), media_type="audio/mpeg", headers={"X-Synthetic-Voice": "true"})
@@ -129,35 +129,35 @@ def text_to_speech(payload: TtsRequest) -> Response:
         raise HTTPException(status_code=502, detail=f"TTS 생성 실패: {error}") from error
 
 
-@agent_router.get("/api/tools")
+@agent_router.get("/api/tools", tags=["03 · Tool Use"])
 def tools() -> dict:
-    return {"tools": TRAVEL_TOOL_DEFINITIONS, "note": "모든 Tool은 조회용 Mock이며 실제 예약이나 결제를 실행하지 않습니다."}
+    return {"tools": get_tool_definitions(), "note": "모든 Tool은 조회 전용이며 예약이나 결제를 실행하지 않습니다."}
 
 
-@agent_router.post("/api/tools/select", response_model=ToolSelectionResult)
+@agent_router.post("/api/tools/select", response_model=ToolSelectionResult, tags=["03 · Tool Use"])
 def choose_tool(payload: ToolSelectRequest) -> ToolSelectionResult:
     selected = payload.provider or settings.llm_provider
     try:
-        return ToolSelectionResult.model_validate(asdict(select_tool(selected, payload.message)))
+        return ToolSelectionResult.model_validate(asdict(select_tool(selected, payload.message, payload.tool_choice)))
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"{selected} Tool 선택에 실패했습니다: {error}") from error
 
 
-@agent_router.post("/api/tools/compare", response_model=ToolCompareResult)
+@agent_router.post("/api/tools/compare", response_model=ToolCompareResult, tags=["03 · Tool Use"])
 def compare_tool_selection(payload: ToolCompareRequest) -> ToolCompareResult:
     items: list[ToolComparisonItem] = []
     for selected in payload.providers:
         try:
-            decision = ToolSelectionResult.model_validate(asdict(select_tool(selected, payload.message)))
+            decision = ToolSelectionResult.model_validate(asdict(select_tool(selected, payload.message, payload.tool_choice)))
             items.append(ToolComparisonItem(provider=selected, status="success", decision=decision))
         except Exception as error:
             items.append(ToolComparisonItem(provider=selected, status="error", error=str(error)))
     return ToolCompareResult(request_count=len(payload.providers), results=items)
 
 
-@agent_router.post("/api/tools/run", response_model=ToolRunResult)
+@agent_router.post("/api/tools/run", response_model=ToolRunResult, tags=["03 · Tool Use"])
 def execute_tool(payload: ToolRunRequest) -> ToolRunResult:
     return _run_tool_safely(payload.tool_name, payload.arguments)
 
@@ -174,21 +174,34 @@ def _run_tool_safely(tool_name: str, arguments: dict) -> ToolRunResult:
         return ToolRunResult(success=False, tool_name=tool_name, error={"code": "TOOL_EXECUTION_ERROR", "message": str(error)})
 
 
-@agent_router.post("/api/tools/complete", response_model=ToolCompleteResult)
+@agent_router.post("/api/tools/complete", response_model=ToolCompleteResult, tags=["03 · Tool Use"])
 def complete_tool_loop(payload: ToolCompleteRequest) -> ToolCompleteResult:
     selected = payload.provider or settings.llm_provider
     try:
-        decision = ToolSelectionResult.model_validate(asdict(select_tool(selected, payload.message)))
+        decision = ToolSelectionResult.model_validate(asdict(select_tool(selected, payload.message, payload.tool_choice)))
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"{selected} Tool 선택 실패: {error}") from error
 
+    trace = [{"stage": "tool_selection", "data": decision.model_dump(mode="json")}]
+    if decision.needs_clarification:
+        trace.append({
+            "stage": "clarification",
+            "data": {
+                "missing_arguments": decision.missing_arguments,
+                "follow_up_question": decision.follow_up_question,
+            },
+        })
+        return ToolCompleteResult(provider=selected, question=payload.message, decision=decision, final_answer=decision.follow_up_question, trace=trace)
+
     if decision.tool_name is None:
         final_answer = "이 질문에는 실행할 조회 Tool이 필요하지 않습니다."
-        return ToolCompleteResult(provider=selected, question=payload.message, decision=decision, final_answer=final_answer)
+        trace.append({"stage": "finish", "data": {"reason": "no_tool"}})
+        return ToolCompleteResult(provider=selected, question=payload.message, decision=decision, final_answer=final_answer, trace=trace)
 
     tool_result = _run_tool_safely(decision.tool_name, decision.arguments)
+    trace.append({"stage": "tool_result", "data": tool_result.model_dump(mode="json")})
     if not tool_result.success:
         return ToolCompleteResult(
             provider=selected,
@@ -196,6 +209,7 @@ def complete_tool_loop(payload: ToolCompleteRequest) -> ToolCompleteResult:
             decision=decision,
             tool_result=tool_result,
             final_answer="Tool을 안전하게 실행하지 못했습니다. 입력과 권한을 확인해 주세요.",
+            trace=trace,
         )
 
     if selected == "mock":
@@ -218,4 +232,5 @@ def complete_tool_loop(payload: ToolCompleteRequest) -> ToolCompleteResult:
         decision=decision,
         tool_result=tool_result,
         final_answer=final_answer,
+        trace=trace + [{"stage": "final_answer", "data": {"text": final_answer}}],
     )
