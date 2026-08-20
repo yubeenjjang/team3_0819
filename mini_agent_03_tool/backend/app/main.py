@@ -5,16 +5,20 @@ from app.routers.agent_router import agent_router
 
 OPENAPI_TAGS = [
     {
-        "name": "01 · LLM",
-        "description": "LLM 기본, Provider 비교, 프롬프트, 멀티모달 API",
+        "name": "00. 환경 상태",
+        "description": "백엔드와 Provider 설정을 확인합니다.",
     },
     {
-        "name": "02 · Structured Output",
-        "description": "Pydantic 검증과 구조화 출력 API",
+        "name": "01. LLM에서 Agent로",
+        "description": "LLM 호출, 분류, Provider 비교와 멀티모달 기능입니다.",
     },
     {
-        "name": "03 · Tool Use",
-        "description": "Tool 스키마, 선택, 안전 실행, Agent Loop API",
+        "name": "02. Prompt와 구조화 출력",
+        "description": "프롬프트 구성과 Pydantic 기반 구조화 출력 검증입니다.",
+    },
+    {
+        "name": "03. Tool Use",
+        "description": "Tool 정의, 선택, 검증·실행 및 Agent Loop입니다.",
     },
 ]
 

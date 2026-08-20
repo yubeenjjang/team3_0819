@@ -1,10 +1,16 @@
 from datetime import date, timedelta
-from typing import Any
+from typing import cast
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from clients.travel_tool_client import create_travel_plan
 from core.api_client import BackendAPIError
+from core.travel_kakao_map import (
+    build_travel_kakao_map_url,
+    extract_travel_places,
+)
+from core.travel_tool_types import TravelPlanResponse
 
 
 CITIES = ["서울", "부산", "제주", "강릉", "인천", "대전", "대구", "광주", "전주", "경주"]
@@ -33,6 +39,88 @@ def user_error_message(error: BackendAPIError) -> str:
     if "(503)" in message:
         return f"여행 정보 조회에 실패했습니다. 잠시 후 다시 시도해 주세요. {message}"
     return message
+
+
+def render_travel_plan(result: TravelPlanResponse) -> None:
+    request = result["request"]
+
+    request_columns = st.columns(4)
+    request_columns[0].metric("여행 지역", request["city"])
+    request_columns[1].metric(
+        "여행 일정",
+        f'{request["check_in"]} ~ {request["check_out"]}',
+    )
+    request_columns[2].metric("여행 인원", f'{request["guests"]}명')
+    request_columns[3].metric("실행 Tool", f'{len(result["tool_calls"])}개')
+
+    st.subheader("여행 계획")
+    st.write(result["answer"])
+    st.caption(
+        f'{result["provider"]} · {result["model"]} · {result["latency_ms"]} ms'
+    )
+
+    attractions, restaurants = extract_travel_places(result)
+
+    st.subheader("카카오맵")
+    if attractions or restaurants:
+        components.iframe(
+            build_travel_kakao_map_url(result),
+            height=460,
+            scrolling=False,
+        )
+        st.caption("파란 마커는 관광지, 주황 마커는 맛집입니다.")
+    else:
+        st.info("지도에 표시할 추천 장소가 없습니다.")
+
+    st.subheader("추천 관광지")
+    if attractions:
+        for attraction in attractions:
+            with st.container(border=True):
+                st.markdown(f'**{attraction["name"]}**')
+                st.write(attraction["description"])
+                st.caption(
+                    f'위도 {attraction["latitude"]:.4f} · '
+                    f'경도 {attraction["longitude"]:.4f}'
+                )
+    else:
+        st.info("추천 관광지가 없습니다.")
+
+    st.subheader("추천 맛집")
+    if restaurants:
+        for restaurant in restaurants:
+            with st.container(border=True):
+                st.markdown(f'**{restaurant["name"]}**')
+                st.write(restaurant["description"])
+                st.caption(
+                    f'예상 가격 {restaurant["estimated_price_krw"]:,}원 · '
+                    f'위도 {restaurant["latitude"]:.4f} · '
+                    f'경도 {restaurant["longitude"]:.4f}'
+                )
+    else:
+        st.info("추천 맛집이 없습니다.")
+
+    st.caption("위치, 가격, 영업시간은 실제 방문 전에 다시 확인하세요.")
+
+    st.subheader("실행 Trace")
+    for tool_call in result["tool_calls"]:
+        matching_result = next(
+            (
+                tool_result
+                for tool_result in result["tool_results"]
+                if tool_result["tool_call_id"] == tool_call["id"]
+            ),
+            None,
+        )
+        status = "성공" if matching_result and matching_result["success"] else "실패"
+        with st.expander(f'{tool_call["name"]} · {status}', expanded=False):
+            st.caption(f'Call ID: {tool_call["id"]}')
+            st.markdown("**Tool arguments**")
+            st.json(tool_call["arguments"])
+            st.markdown("**Tool result**")
+            st.json(matching_result or {"success": False, "data": {}})
+
+    with st.expander("전체 API 응답 JSON", expanded=False):
+        st.json(result)
 
 
 st.title("🧭 여행 계획 Tool Use")
@@ -83,14 +171,14 @@ if st.button(
 ):
     try:
         with st.spinner("여행 계획을 생성하는 중입니다..."):
-            result: dict[str, Any] = create_travel_plan(
+            api_response = create_travel_plan(
                 provider=provider,
                 city=city,
                 check_in=check_in,
                 check_out=check_out,
                 guests=guests,
             )
-        st.session_state[RESULT_STATE_KEY] = result
+        st.session_state[RESULT_STATE_KEY] = api_response
         st.session_state[REQUEST_STATE_KEY] = {
             "provider": provider,
             "city": city,
@@ -104,6 +192,8 @@ if st.button(
         st.session_state.pop(REQUEST_STATE_KEY, None)
         st.error(user_error_message(error))
 
-# Frontend B integration boundary:
-# Read st.session_state[RESULT_STATE_KEY] below this line and render only the
-# map, recommendation cards, Tool Call/Result, and execution Trace here.
+stored_result = st.session_state.get(RESULT_STATE_KEY)
+if stored_result is None:
+    st.info("입력값을 선택한 뒤 계획 생성 버튼을 눌러 주세요.")
+else:
+    render_travel_plan(cast(TravelPlanResponse, stored_result))

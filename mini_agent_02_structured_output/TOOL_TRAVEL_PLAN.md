@@ -355,4 +355,3 @@ Allowlist + Tool Executor
 - 백엔드가 검증과 Allowlist를 통과한 Tool만 실행한다.
 - Mock 모드에서 API 키 없이 Tool Call → Tool Result → 관광지·맛집 추천 → 지도 마커 → 최종 답변의 전체 흐름을 시연한다.
 - 프론트엔드와 백엔드가 이 문서의 API 계약만으로 독립 구현·통합할 수 있다.
-
