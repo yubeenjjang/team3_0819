@@ -1,23 +1,32 @@
 from typing import Any
 
 from core.kakao_map import build_kakao_map_url
+from core.travel_tool_types import TravelPlanResponse
 
 
-def extract_places(tool_results: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Extract map-ready attractions and restaurants from normalized Tool results."""
+def extract_travel_places(
+    result: TravelPlanResponse,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Tool 결과에서 지도용 관광지와 맛집 목록을 분리합니다."""
     attractions: list[dict[str, Any]] = []
     restaurants: list[dict[str, Any]] = []
-    for result in tool_results:
-        data = result.get("data") or {}
-        if result.get("name") == "recommend_attractions":
+
+    for tool_result in result["tool_results"]:
+        if not tool_result["success"]:
+            continue
+
+        data = tool_result["data"]
+
+        if tool_result["name"] == "recommend_attractions":
             attractions.extend(data.get("attractions", []))
-        if result.get("name") == "recommend_restaurants":
+
+        if tool_result["name"] == "recommend_restaurants":
             restaurants.extend(data.get("restaurants", []))
+
     return attractions, restaurants
 
 
-def build_travel_map_url(tool_results: list[dict[str, Any]]) -> str | None:
-    attractions, restaurants = extract_places(tool_results)
-    if not attractions and not restaurants:
-        return None
+def build_travel_kakao_map_url(result: TravelPlanResponse) -> str:
+    """2-5 Tool Use 응답을 기존 카카오맵 iframe URL로 변환합니다."""
+    attractions, restaurants = extract_travel_places(result)
     return build_kakao_map_url(attractions, restaurants)
