@@ -4,7 +4,7 @@ from app.travel_tools.schemas import ToolCall, ToolExecutionResult, TravelRecomm
 
 def create_mock_tool_calls(request: TravelRecommendationInput) -> list[ToolCall]:
     """Mock Provider가 제안하는 결정적이고 재현 가능한 Tool Call 목록입니다."""
-    arguments = request.model_dump(mode="json")
+    arguments = request
     return [
         ToolCall(id="call_attractions_001", name="recommend_attractions", arguments=arguments),
         ToolCall(id="call_restaurants_001", name="recommend_restaurants", arguments=arguments),

@@ -36,8 +36,7 @@ def execute_tool_call(tool_call: ToolCall) -> ToolExecutionResult:
             tool_call_id=tool_call.id,
             name=tool_call.name,
             success=False,
-            error_code="TOOL_VALIDATION_ERROR",
-            error_message=str(error.errors()[0]["msg"]),
+            error=str(error.errors()[0]["msg"]),
         )
 
     return ToolExecutionResult(

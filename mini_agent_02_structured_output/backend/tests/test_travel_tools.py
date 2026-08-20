@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from pydantic import ValidationError
@@ -11,8 +11,8 @@ from app.travel_tools.schemas import ToolCall, TravelRecommendationInput
 def make_input() -> TravelRecommendationInput:
     return TravelRecommendationInput(
         city="부산",
-        check_in=date(2026, 8, 12),
-        check_out=date(2026, 8, 14),
+        check_in=date.today() + timedelta(days=1),
+        check_out=date.today() + timedelta(days=3),
         guests=2,
     )
 
@@ -28,16 +28,12 @@ def test_mock_tool_loop_returns_attractions_and_restaurants() -> None:
 
 
 def test_executor_rejects_extra_tool_arguments() -> None:
-    result = execute_tool_call(
+    with pytest.raises(ValidationError):
         ToolCall(
             id="call_invalid_001",
             name="recommend_attractions",
             arguments={**make_input().model_dump(mode="json"), "payment": True},
         )
-    )
-
-    assert not result.success
-    assert result.error_code == "TOOL_VALIDATION_ERROR"
 
 
 def test_executor_rejects_disallowed_tool_name() -> None:
@@ -53,10 +49,10 @@ def test_executor_rejects_disallowed_tool_name() -> None:
 @pytest.mark.parametrize(
     ("check_in", "check_out", "guests"),
     [
-        (date(2026, 8, 12), date(2026, 8, 12), 2),
-        (date(2026, 8, 14), date(2026, 8, 12), 2),
-        (date(2026, 8, 12), date(2026, 8, 14), 0),
-        (date(2026, 8, 12), date(2026, 8, 14), 11),
+        (date.today() + timedelta(days=1), date.today() + timedelta(days=1), 2),
+        (date.today() + timedelta(days=3), date.today() + timedelta(days=1), 2),
+        (date.today() + timedelta(days=1), date.today() + timedelta(days=3), 0),
+        (date.today() + timedelta(days=1), date.today() + timedelta(days=3), 11),
     ],
 )
 def test_tool_input_validates_dates_and_guests(

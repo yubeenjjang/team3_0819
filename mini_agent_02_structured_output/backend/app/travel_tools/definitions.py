@@ -11,9 +11,7 @@ def recommend_attractions(
 ) -> AttractionRecommendationResult:
     """검증된 지역 입력에 맞는 모의 관광지 데이터를 조회합니다."""
     return AttractionRecommendationResult(
-        city=arguments.city,
         attractions=CITY_DATA[arguments.city]["attractions"],
-        source="mock",
     )
 
 
@@ -22,7 +20,5 @@ def recommend_restaurants(
 ) -> RestaurantRecommendationResult:
     """검증된 지역 입력에 맞는 모의 맛집 데이터를 조회합니다."""
     return RestaurantRecommendationResult(
-        city=arguments.city,
         restaurants=CITY_DATA[arguments.city]["restaurants"],
-        source="mock",
     )
