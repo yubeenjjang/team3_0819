@@ -58,7 +58,8 @@ def _select_gemini(request: TravelRecommendationInput) -> tuple[str, list[str]]:
     from google.genai import types
 
     declarations = [types.FunctionDeclaration(name=tool["name"], description=tool["description"], parameters_json_schema=tool["parameters"]) for tool in _tools()]
-    response = genai.Client(api_key=settings.gemini_api_key).models.generate_content(
+    client = genai.Client(api_key=settings.gemini_api_key)
+    response = client.models.generate_content(
         model=settings.gemini_model,
         contents=_input_text(request),
         config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, tools=[types.Tool(function_declarations=declarations)]),
